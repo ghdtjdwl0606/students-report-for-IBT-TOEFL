@@ -1,0 +1,5 @@
+{
+  "name": "Smart Report Card Builder for IBT TOEFL",
+  "description": "A comprehensive student performance analysis tool that allows teachers to set up answer keys by domain and generates visual reports with AI-powered feedback.",
+  "requestFramePermissions": []
+}
