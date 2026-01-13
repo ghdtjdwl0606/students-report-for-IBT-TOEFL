@@ -287,11 +287,14 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
         </div>
       </div>
 
-      <div className="flex justify-center pt-10 no-print">
-        <button onClick={onReset} className="bg-slate-900 text-white px-16 py-5 rounded-3xl font-black shadow-2xl active:scale-95 transition-all">
-          {isShared ? "나의 성적표도 만들기" : "새로운 데이터 입력하기"}
-        </button>
-      </div>
+      {/* 공유 모드가 아닐 때만 '새로운 데이터 입력하기' 버튼 표시 */}
+      {!isShared && (
+        <div className="flex justify-center pt-10 no-print">
+          <button onClick={onReset} className="bg-slate-900 text-white px-16 py-5 rounded-3xl font-black shadow-2xl active:scale-95 transition-all">
+            새로운 데이터 입력하기
+          </button>
+        </div>
+      )}
     </div>
   );
 };

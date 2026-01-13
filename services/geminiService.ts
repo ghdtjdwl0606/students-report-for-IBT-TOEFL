@@ -29,7 +29,8 @@ export const getStudentFeedback = async (result: EvaluationResult): Promise<stri
     `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash-preview",
+      // 사용자가 요청한 특정 모델 식별자 사용
+      model: "prj_GKMXP7d6CNwgXilDiG62TjnjaRVn",
       contents: prompt,
     });
 
