@@ -1,7 +1,5 @@
-
 import React, { useEffect, useState, useRef } from 'react';
 import { EvaluationResult, Question, StudentInput, Section, CategoryResult } from '../types.ts';
-import { getStudentFeedback } from '../services/geminiService.ts';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
 
@@ -12,22 +10,51 @@ interface Props {
   isShared?: boolean;
 }
 
+const CATEGORY_DESCRIPTIONS: Record<string, Record<string, string>> = {
+  Reading: {
+    "Vocabulary": "지문 속 특정 단어나 구절의 의미를 묻습니다. 단순히 사전적 정의를 아는 것을 넘어, 문맥상(Context) 가장 적절한 동의어를 찾는 능력을 평가합니다.",
+    "Detail": "지문에 명시적으로 언급된 사실, 데이터, 세부 정보를 정확히 파악했는지 묻습니다. 본문의 내용을 그대로 옮기기보다 Paraphrasing된 문장을 찾는 것이 핵심입니다.",
+    "Reference": "지문에 등장하는 대명사(it, they, which 등)가 가리키는 선행사가 무엇인지 묻습니다. 문장의 문법적 구조와 수 일치, 논리적 연결을 파악해야 합니다.",
+    "Sentence Simplification": "길고 복잡한 문장의 핵심 의미를 가장 잘 요약한 선택지를 고르는 문제입니다. 중요하지 않은 수식어구는 쳐내고 '누가 무엇을 했다'는 핵심 정보를 보존하는 것이 중요합니다.",
+    "Rhetorical Purpose": "작가가 특정 단어, 구절, 예시를 왜 사용했는지 그 의도나 기능을 묻습니다. 단락의 주제와 해당 부분이 어떻게 연결되는지 논리적 관계를 파악해야 합니다.",
+    "Inference": "지문에 직접 언급되지는 않았지만, 주어진 정보를 바탕으로 논리적으로 유추할 수 있는 내용을 묻습니다. 지나친 비약 없이 본문의 근거 안에서 결론을 내는 것이 핵심입니다.",
+    "Sentence Insertion": "새로운 문장이 들어갈 가장 적절한 위치를 찾는 문제입니다. 앞뒤 문장 간의 논리적 흐름, 연결어, 지시어 등을 단서로 활용하여 문맥의 끊김이 없는 곳을 찾습니다.",
+    "Prose Summary": "지문 전체의 내용을 가장 잘 요약한 3가지 핵심 문장을 고르는 문제입니다. 지엽적인 세부 사항과 전체 주제를 구분하는 능력이 가장 중요합니다."
+  },
+  Listening: {
+    "Main Idea": "대화나 강의의 전체적인 주제나 목적을 묻는 가장 기본적인 문제입니다. \"이 대화의 주된 목적은 무엇인가?\" 또는 \"교수는 주로 무엇에 대해 설명하고 있는가?\"를 묻습니다.",
+    "Inference": "화자가 직접적으로 언급하지는 않았지만, 주어진 정보를 통해 논리적으로 유출할 수 있는 결론을 묻습니다. 말의 행간을 읽는 능력이 필요합니다.",
+    "Function": "특정 문장이나 어구를 말한 의도(기능)를 묻습니다. 주로 해당 부분을 다시 들려주며(Replay), \"교수가 이 말을 왜 했는가?\"를 질문합니다.",
+    "Detail": "강의나 대화 중에 언급된 구체적인 사실, 정의, 이유 등을 묻습니다. 핵심 키워드 뿐만 아니라 그와 관련된 세부 설명을 정확히 받아 적는 능력이 중요합니다.",
+    "Organization": "강의의 전체적인 구조나 전개 방식을 묻습니다. 교수가 정보를 어떤 순서로 배치했는지(예: 비교와 대조, 인과관계, 시간 순서 등) 파악해야 합니다.",
+    "Speaker's Attitude": "화자의 목소리 톤, 억양, 선택한 단어 등을 통해 화자의 태도, 감정, 의견을 묻습니다. 화자가 해당 주제에 대해 긍정적인지, 회의적인지 등을 판단해야 합니다."
+  },
+  Speaking: {
+    "Information Selection": "통합형 문제(읽기+듣기)에서 중요한 포인트와 세부 정보를 얼마나 정확하게 추출했는지를 평가합니다. 불필요한 내용은 쳐내고, 정답에 꼭 필요한 핵심 근거들을 빠짐없이 포함하는 것이 중요합니다.",
+    "Language & Grammar": "단순한 문장을 반복하지 않고 얼마나 다양한 어휘와 복잡한 문장 구조를 정확하게 구사하는지 봅니다. 사소한 실수는 감점이 적지만, 의미 전달을 방해하는 반복적인 문법 오류는 주의해야 합니다.",
+    "Organization": "답변의 흐름이 얼마나 체계적인지 평가합니다. 서론-본론-결론의 구조를 갖추었는지, 그리고 연결어를 사용하여 아이디어 간의 관계를 논리적으로 매끄럽게 연결했는지가 핵심입니다.",
+    "Fluency": "단순히 빨리 말하는 것이 아니라, 말의 속도가 일정하고 발음과 억양이 자연스러운지를 평가합니다. 너무 잦은 휴지기나 불필요한 반복을 줄여서 듣는 사람이 편안하게 이해할 수 있어야 합니다."
+  },
+  Writing: {
+    "Topic Development": "질문에 대해 얼마나 관련성 있고 풍부한 답변을 했는지 평가합니다. 단순히 양을 채우는 것이 아니라, 주장을 뒷받침하는 구체적인 예시, 세부 정보, 논리적 근거가 얼마나 설득력 있게 제시되었는지가 핵심입니다.",
+    "Organization": "글이 논리적인 순서로 배치되었는지 평가합니다. 서론-본론-결론의 명확한 구조를 갖추었는지, 단락 간의 연결이 매끄러운지, 그리고 연결어를 적절히 사용하여 독자가 흐름을 쉽게 따라올 수 있게 했는지를 봅니다.",
+    "Language": "어휘 선택 및 표현력: 얼마나 적절하고 다양한 어휘를 사용하는지 평가합니다. 동일한 단어를 반복하기보다 동의어를 활용하고, 학술적인 상황에 맞는 격식 있는 표현과 구문을 정확하게 구사하는 능력이 중요합니다.",
+    "Grammar": "문법 오류가 없는지뿐만 아니라, 문장 구조가 얼마나 다양한지 평가합니다. 단순문만 나열하지 않고 복합문, 관계대명사, 분사구문 등을 자유자재로 활용하면서도 시제나 수 일치 같은 기본적인 실수를 최소화해야 합니다."
+  }
+};
+
 const utf8_to_b64 = (str: string) => window.btoa(unescape(encodeURIComponent(str)));
 
 const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShared }) => {
   const [result, setResult] = useState<EvaluationResult | null>(null);
-  const [aiFeedback, setAiFeedback] = useState<string>("");
-  const [loading, setLoading] = useState(true);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
-  const [needsApiKey, setNeedsApiKey] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     calculateResults();
   }, [questions, studentInput]);
 
-  const calculateResults = async () => {
-    setLoading(true);
+  const calculateResults = () => {
     const isCorrect: Record<string, boolean> = {};
     const sectionTotals: Record<Section, { earned: number; max: number }> = {
       Reading: { earned: 0, max: 0 },
@@ -99,16 +126,6 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
     };
 
     setResult(finalResult);
-    
-    try {
-      const feedback = await getStudentFeedback(finalResult);
-      setAiFeedback(feedback);
-    } catch (err: any) {
-      if (err.message === "API_KEY_MISSING") setNeedsApiKey(true);
-      else setAiFeedback("분석 중 오류 발생");
-    } finally {
-      setLoading(false);
-    }
   };
 
   const handleDownloadPdf = async () => {
@@ -170,20 +187,39 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
             <i className="fas fa-layer-group text-slate-300"></i> 세부 항목별 성취도
           </h4>
           <div className="space-y-5">
-            {categories.map((cat, i) => (
-              <div key={i}>
-                <div className="flex justify-between items-center mb-2 px-1">
-                  <span className="text-sm font-bold text-slate-700">{cat.category}</span>
-                  <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{Math.round(cat.percentage)}%</span>
+            {categories.map((cat, i) => {
+              const description = CATEGORY_DESCRIPTIONS[section]?.[cat.category];
+              return (
+                <div key={i} className="group relative">
+                  <div className="flex justify-between items-center mb-2 px-1">
+                    <div className="flex items-center gap-1.5 cursor-help">
+                      <span className="text-sm font-bold text-slate-700 underline decoration-slate-200 decoration-dotted underline-offset-4 group-hover:decoration-slate-400 group-hover:text-indigo-600 transition-colors">
+                        {cat.category}
+                      </span>
+                      {description && (
+                        <i className="fas fa-info-circle text-[10px] text-slate-300 group-hover:text-indigo-400"></i>
+                      )}
+                    </div>
+                    <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{Math.round(cat.percentage)}%</span>
+                  </div>
+                  
+                  {/* Tooltip */}
+                  {description && (
+                    <div className="absolute z-10 bottom-full left-0 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 leading-relaxed font-medium pointer-events-none border border-white/10">
+                      {description}
+                      <div className="absolute top-full left-4 -mt-1 w-2 h-2 bg-slate-800 rotate-45"></div>
+                    </div>
+                  )}
+
+                  <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
+                    <div 
+                      className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-1000 ease-out`} 
+                      style={{ width: `${cat.percentage}%` }}
+                    ></div>
+                  </div>
                 </div>
-                <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
-                  <div 
-                    className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-1000 ease-out`} 
-                    style={{ width: `${cat.percentage}%` }}
-                  ></div>
-                </div>
-              </div>
-            ))}
+              );
+            })}
             {categories.length === 0 && (
               <div className="text-center py-6 text-slate-400 text-sm italic">평가 데이터가 없습니다.</div>
             )}
@@ -200,7 +236,7 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
       <div className="flex justify-end gap-3 no-print">
         <button 
           onClick={handleDownloadPdf}
-          disabled={isGeneratingPdf || loading}
+          disabled={isGeneratingPdf}
           className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-indigo-100 flex items-center gap-2 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50"
         >
           {isGeneratingPdf ? (
@@ -259,26 +295,6 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
           </div>
         </div>
 
-        <div className="bg-white rounded-[2.5rem] p-8 border border-slate-200 shadow-sm relative overflow-hidden">
-             <div className="flex justify-between items-center mb-6">
-               <h3 className="text-xl font-bold flex items-center gap-2">
-                 <i className="fas fa-chart-line text-indigo-500"></i> 종합 학습 진단
-               </h3>
-             </div>
-             <div className="bg-slate-50 rounded-3xl p-7 border border-slate-100 min-h-[120px] text-slate-700 leading-relaxed text-lg">
-               {loading ? (
-                 <div className="flex flex-col items-center justify-center h-full py-10 gap-3">
-                   <div className="w-8 h-8 border-4 border-indigo-600 border-t-transparent rounded-full animate-spin"></div>
-                   <p className="text-xs font-bold text-indigo-400 font-sans">데이터 분석 중...</p>
-                 </div>
-               ) : needsApiKey ? (
-                 <div className="text-center py-10 text-slate-400">분석 기능을 사용하려면 관리자에게 문의하세요.</div>
-               ) : (
-                 <p className="font-medium whitespace-pre-line">{aiFeedback}</p>
-               )}
-             </div>
-        </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {renderSectionDetail('Reading', 'from-blue-600 to-indigo-700', 'fa-book-open')}
           {renderSectionDetail('Listening', 'from-emerald-500 to-teal-600', 'fa-headphones')}
@@ -287,7 +303,6 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
         </div>
       </div>
 
-      {/* 공유 모드가 아닐 때만 '새로운 데이터 입력하기' 버튼 표시 */}
       {!isShared && (
         <div className="flex justify-center pt-10 no-print">
           <button onClick={onReset} className="bg-slate-900 text-white px-16 py-5 rounded-3xl font-black shadow-2xl active:scale-95 transition-all">
