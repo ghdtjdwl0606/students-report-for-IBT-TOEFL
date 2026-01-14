@@ -48,6 +48,8 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
   const [result, setResult] = useState<EvaluationResult | null>(null);
   const [isGeneratingPdf, setIsGeneratingPdf] = useState(false);
   const reportRef = useRef<HTMLDivElement>(null);
+  const headerRef = useRef<HTMLDivElement>(null);
+  const sectionRefs = useRef<(HTMLDivElement | null)[]>([]);
 
   useEffect(() => {
     calculateResults();
@@ -124,45 +126,53 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
   const handleDownloadPdf = async () => {
     if (!reportRef.current || !result) return;
     setIsGeneratingPdf(true);
+    
     try {
-      const element = reportRef.current;
-      const canvas = await html2canvas(element, {
-        scale: 3, // 초고화질
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#f8fafc',
-        windowWidth: 1200 // PC 레이아웃 고정 캡처
-      });
-
-      const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
-      
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = pdf.internal.pageSize.getHeight();
+      const margin = 10;
+      const contentWidth = pdfWidth - (margin * 2);
       
-      const imgWidth = canvas.width;
-      const imgHeight = canvas.height;
-      const ratio = pdfWidth / (imgWidth / 3); // scale 3 고려
-      const totalPdfHeightInMm = (imgHeight / 3) * ratio;
+      let currentY = margin;
 
-      let heightLeft = totalPdfHeightInMm;
-      let position = 0;
+      // 캡처 함수
+      const captureAndAddToPdf = async (el: HTMLElement) => {
+        const canvas = await html2canvas(el, {
+          scale: 3,
+          useCORS: true,
+          backgroundColor: '#f8fafc',
+          windowWidth: 1200
+        });
+        const imgData = canvas.toDataURL('image/png');
+        const imgProps = pdf.getImageProperties(imgData);
+        const displayHeight = (imgProps.height * contentWidth) / imgProps.width;
 
-      // 첫 페이지
-      pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalPdfHeightInMm);
-      heightLeft -= pdfHeight;
+        // 페이지 넘김 체크
+        if (currentY + displayHeight > pdfHeight - margin) {
+          pdf.addPage();
+          currentY = margin;
+        }
 
-      // 추가 페이지 처리 (내용이 길 경우)
-      while (heightLeft > 0) {
-        position = heightLeft - totalPdfHeightInMm;
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', 0, position, pdfWidth, totalPdfHeightInMm);
-        heightLeft -= pdfHeight;
+        pdf.addImage(imgData, 'PNG', margin, currentY, contentWidth, displayHeight);
+        currentY += displayHeight + 5; // 요소 간 간격
+      };
+
+      // 1. 헤더 캡처
+      if (headerRef.current) {
+        await captureAndAddToPdf(headerRef.current);
       }
 
-      pdf.save(`${result.studentName}_TOEFL_Report.pdf`);
+      // 2. 각 섹션 카드별로 순회하며 캡처 (잘림 방지)
+      for (const sectionEl of sectionRefs.current) {
+        if (sectionEl) {
+          await captureAndAddToPdf(sectionEl);
+        }
+      }
+
+      pdf.save(`${result.studentName}_Detailed_TOEFL_Report.pdf`);
     } catch (error) {
-      console.error("PDF generation failed", error);
+      console.error("PDF creation error:", error);
       alert("PDF 생성 중 오류가 발생했습니다.");
     } finally {
       setIsGeneratingPdf(false);
@@ -179,7 +189,6 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
         qs.map(q => q.points === 1 ? '' : q.points.toString())
       ];
     };
-
     const packDirect = (section: Section) => {
       return questions.filter(q => q.section === section).map(q => [
         q.category,
@@ -187,7 +196,6 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
         studentInput.answers[q.id] || '0'
       ]);
     };
-
     const ultraCompact = [
       studentInput.name,
       packMCQ('Reading'),
@@ -195,31 +203,28 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
       packDirect('Speaking'),
       packDirect('Writing')
     ];
-    
     try {
       const jsonStr = JSON.stringify(ultraCompact);
       const compressed = zlibSync(strToU8(jsonStr));
-      const b64 = btoa(String.fromCharCode(...compressed))
-        .replace(/\+/g, '-')
-        .replace(/\//g, '_')
-        .replace(/=+$/, '');
-      
+      const b64 = btoa(String.fromCharCode(...compressed)).replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '');
       const shareUrl = `${window.location.origin}${window.location.pathname}#s=${b64}`;
       navigator.clipboard.writeText(shareUrl);
       alert("공유 링크가 복사되었습니다.");
     } catch (e) {
-      console.error(e);
       alert("링크 생성 실패");
     }
   };
 
-  const renderSectionDetail = (section: Section, color: string, icon: string) => {
+  const renderSectionDetail = (section: Section, color: string, icon: string, index: number) => {
     if (!result) return null;
     const score = result.sectionScores[section];
     const categories = result.categoryResults.filter(c => c.section === section);
 
     return (
-      <div className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full transition-all hover:shadow-md">
+      <div 
+        ref={el => sectionRefs.current[index] = el}
+        className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full transition-all hover:shadow-md"
+      >
         <div className={`p-5 md:p-6 bg-gradient-to-r ${color} text-white flex justify-between items-center`}>
           <div className="flex items-center gap-2 md:gap-3">
             <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-lg md:rounded-xl flex items-center justify-center">
@@ -227,7 +232,7 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
             </div>
             <div>
               <h3 className="font-black text-lg md:text-xl leading-tight">{section}</h3>
-              <p className="text-[9px] md:text-[10px] font-bold opacity-80 uppercase tracking-wider">Analysis</p>
+              <p className="text-[9px] md:text-[10px] font-bold opacity-80 uppercase tracking-wider">Skill Assessment</p>
             </div>
           </div>
           <div className="text-right">
@@ -238,25 +243,37 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
         
         <div className="p-6 md:p-8 flex-1">
           <h4 className="text-[10px] md:text-xs font-black text-slate-400 uppercase mb-4 md:mb-5 tracking-widest flex items-center gap-2">
-            <i className="fas fa-layer-group text-slate-300"></i> 세부 항목별 성취도
+            <i className="fas fa-layer-group text-slate-300"></i> 영역별 상세 분석
           </h4>
-          <div className="space-y-4 md:space-y-5">
+          <div className="space-y-6">
             {categories.map((cat, i) => {
               const description = CATEGORY_DESCRIPTIONS[section]?.[cat.category];
               return (
                 <div key={i} className="group relative">
-                  <div className="flex justify-between items-center mb-1.5 md:mb-2 px-1">
-                    <div className="flex items-center gap-1.5 cursor-help">
-                      <span className="text-xs md:text-sm font-bold text-slate-700 underline decoration-slate-200 decoration-dotted underline-offset-4">
+                  <div className="flex justify-between items-center mb-2 px-1">
+                    <div className="flex items-center gap-2 cursor-help">
+                      <span className="text-xs md:text-sm font-bold text-slate-700 underline decoration-slate-200 decoration-dotted underline-offset-4 group-hover:text-indigo-600 group-hover:decoration-indigo-300 transition-all">
                         {cat.category}
                       </span>
                       {description && (
-                        <i className="fas fa-info-circle text-[9px] md:text-[10px] text-slate-300"></i>
+                        <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
+                           <i className="fas fa-question text-[8px] text-slate-400 group-hover:text-indigo-500"></i>
+                        </div>
                       )}
                     </div>
                     <span className="text-[10px] md:text-xs font-black text-indigo-600 bg-indigo-50 px-1.5 md:px-2 py-0.5 rounded-md">{Math.round(cat.percentage)}%</span>
                   </div>
-                  <div className="h-2 md:h-3 bg-slate-100 rounded-full overflow-hidden">
+                  
+                  {/* 정보 툴팁 (Info Tooltip) 복구 */}
+                  {description && (
+                    <div className="absolute z-20 bottom-full left-0 mb-3 w-64 p-4 bg-slate-800 text-white text-xs rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 leading-relaxed font-medium pointer-events-none border border-white/10">
+                      <div className="font-bold text-indigo-300 mb-1">{cat.category} 가이드</div>
+                      {description}
+                      <div className="absolute top-full left-4 -mt-1 w-3 h-3 bg-slate-800 rotate-45 border-b border-r border-white/10"></div>
+                    </div>
+                  )}
+
+                  <div className="h-2.5 md:h-3.5 bg-slate-100 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-1000 ease-out`} 
                       style={{ width: `${cat.percentage}%` }}
@@ -274,25 +291,26 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
   if (!result) return null;
 
   return (
-    <div className="max-w-6xl mx-auto space-y-4 md:space-y-6 px-2 md:px-0 pb-20">
+    <div className="max-w-6xl mx-auto space-y-6 px-2 md:px-0 pb-20">
       <div className="flex flex-col sm:flex-row justify-end gap-2 md:gap-3 no-print">
         <button 
           onClick={handleDownloadPdf}
           disabled={isGeneratingPdf}
-          className="bg-indigo-600 text-white px-4 md:px-5 py-2.5 md:py-3 rounded-xl font-bold shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 text-sm md:text-base"
+          className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-indigo-100 flex items-center justify-center gap-2 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50 text-sm md:text-base"
         >
           {isGeneratingPdf ? <><i className="fas fa-circle-notch animate-spin"></i> PDF 생성 중...</> : <><i className="fas fa-file-pdf"></i> PDF 다운로드</>}
         </button>
-        <button onClick={handleCopyLink} className="bg-white border border-slate-200 px-4 md:px-5 py-2.5 md:py-3 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-all text-sm md:text-base">공유 링크 복사</button>
+        <button onClick={handleCopyLink} className="bg-white border border-slate-200 px-5 py-3 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-all text-sm md:text-base">공유 링크 복사</button>
       </div>
 
-      <div ref={reportRef} className="space-y-4 md:space-y-6">
-        <div className="bg-slate-900 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 text-white shadow-2xl relative overflow-hidden">
+      <div ref={reportRef} className="space-y-6">
+        {/* 요약 헤더 카드 */}
+        <div ref={headerRef} className="bg-slate-900 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 text-white shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 md:w-96 h-64 md:h-96 bg-indigo-500/10 blur-[60px] md:blur-[100px] -mr-10 md:-mr-20 -mt-10 md:-mt-20"></div>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-8 mb-8 md:mb-10">
             <div>
               <h2 className="text-2xl md:text-4xl font-black mb-2 md:mb-3">{result.studentName} 학생 성적 리포트</h2>
-              <p className="text-slate-400 font-bold max-w-md text-xs md:text-sm leading-relaxed">IBT TOEFL 기준 4대 영역 정밀 분석 결과입니다.</p>
+              <p className="text-slate-400 font-bold max-w-md text-xs md:text-sm leading-relaxed">본 리포트는 IBT TOEFL 기준에 따라 학생의 4대 영역 성취도를 정밀하게 분석한 결과입니다.</p>
             </div>
             <div className="bg-white text-slate-900 rounded-[1.5rem] md:rounded-[2.5rem] p-5 md:p-8 text-center w-full md:min-w-[220px] shadow-2xl border-2 md:border-4 border-indigo-500/20">
               <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Total Scaled Score</span>
@@ -320,17 +338,18 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
           </div>
         </div>
         
+        {/* 영역별 분석 카드들 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
-          {renderSectionDetail('Reading', 'from-blue-600 to-indigo-700', 'fa-book-open')}
-          {renderSectionDetail('Listening', 'from-emerald-500 to-teal-600', 'fa-headphones')}
-          {renderSectionDetail('Speaking', 'from-orange-500 to-red-600', 'fa-microphone')}
-          {renderSectionDetail('Writing', 'from-purple-600 to-pink-600', 'fa-pen-nib')}
+          {renderSectionDetail('Reading', 'from-blue-600 to-indigo-700', 'fa-book-open', 0)}
+          {renderSectionDetail('Listening', 'from-emerald-500 to-teal-600', 'fa-headphones', 1)}
+          {renderSectionDetail('Speaking', 'from-orange-500 to-red-600', 'fa-microphone', 2)}
+          {renderSectionDetail('Writing', 'from-purple-600 to-pink-600', 'fa-pen-nib', 3)}
         </div>
       </div>
       
       {!isShared && (
         <div className="flex justify-center pt-10 no-print">
-          <button onClick={onReset} className="w-full md:w-auto bg-slate-900 text-white px-8 md:px-16 py-4 md:py-5 rounded-2xl md:rounded-3xl font-black shadow-2xl active:scale-95 transition-all text-sm md:text-base">새로운 데이터 입력하기</button>
+          <button onClick={onReset} className="w-full md:w-auto bg-slate-900 text-white px-10 md:px-16 py-4 md:py-5 rounded-2xl md:rounded-3xl font-black shadow-2xl active:scale-95 transition-all text-sm md:text-base">새로운 데이터 입력하기</button>
         </div>
       )}
     </div>
