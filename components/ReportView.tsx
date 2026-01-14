@@ -13,34 +13,34 @@ interface Props {
 
 const CATEGORY_DESCRIPTIONS: Record<string, Record<string, string>> = {
   Reading: {
-    "Vocabulary": "지문 속 특정 단어나 구절의 의미를 묻습니다. 문맥상 가장 적절한 의미를 찾는 능력을 평가합니다.",
-    "Detail": "지문에 명시된 사실, 데이터, 세부 정보를 정확히 파악했는지 평가합니다.",
-    "Reference": "대명사가 가리키는 대상을 논리적으로 파악하는 능력을 평가합니다.",
-    "Sentence Simplification": "복잡한 문장의 핵심 의미를 요약하는 능력을 평가합니다.",
-    "Rhetorical Purpose": "작가가 특정 표현을 사용한 의도나 기능을 파악하는지 봅니다.",
-    "Inference": "정보를 바탕으로 논리적으로 유추할 수 있는 내용을 찾는 능력을 평가합니다.",
-    "Sentence Insertion": "문맥의 흐름을 파악하여 문장이 들어갈 적절한 위치를 찾는 능력입니다.",
-    "Prose Summary": "지문 전체의 핵심 내용을 요약적으로 파악하는 능력을 평가합니다."
+    "Vocabulary": "지문 속 특정 단어나 구절의 의미를 묻습니다. 단순히 사전적 정의를 아는 것을 넘어, 문맥상 가장 적절한 의미를 찾는 능력을 평가합니다.",
+    "Detail": "지문에 명시적으로 언급된 사실, 데이터, 세부 정보를 정확히 파악했는지 묻습니다. 본문 내용을 그대로 옮기기보다 Paraphrasing된 문장을 찾는 것이 핵심입니다.",
+    "Reference": "지문에 등장하는 대명사(it, they, which 등)가 가리키는 선행사가 무엇인지 묻습니다. 문법적 구조와 논리적 연결을 파악해야 합니다.",
+    "Sentence Simplification": "길고 복잡한 문장의 핵심 의미를 가장 잘 요약한 선택지를 고르는 문제입니다. 중요하지 않은 수식어구는 제외하고 핵심 정보를 보존하는 능력을 봅니다.",
+    "Rhetorical Purpose": "작가가 특정 단어, 구절, 예시를 왜 사용했는지 그 의도나 기능을 묻습니다. 단락의 주제와 해당 부분이 어떻게 연결되는지 논리적 관계를 파악해야 합니다.",
+    "Inference": "지문에 직접 언급되지는 않았지만, 주어진 정보를 바탕으로 논리적으로 유추할 수 있는 내용을 묻습니다. 본문의 근거 안에서 결론을 내는 것이 핵심입니다.",
+    "Sentence Insertion": "새로운 문장이 들어갈 가장 적절한 위치를 찾는 문제입니다. 앞뒤 문장 간의 논리적 흐름, 연결어, 지시어 등을 단서로 활용합니다.",
+    "Prose Summary": "지문 전체의 내용을 가장 잘 요약한 3가지 핵심 문장을 고르는 문제입니다. 지엽적인 세부 사항과 전체 주제를 구분하는 능력이 가장 중요합니다."
   },
   Listening: {
-    "Main Idea": "대화나 강의의 전체적인 주제나 목적을 파악하는 능력을 평가합니다.",
-    "Inference": "주어진 정보를 통해 논리적으로 유출할 수 있는 결론을 묻습니다.",
-    "Function": "특정 표현을 사용한 의도나 기능을 다시 듣고 파악하는 능력입니다.",
-    "Detail": "강의나 대화 중 언급된 구체적인 사실이나 정의를 파악하는 능력입니다.",
-    "Organization": "강의의 전체적인 구조나 전개 방식을 파악하는 능력입니다.",
-    "Speaker's Attitude": "화자의 어조나 선택 단어를 통해 태도와 감정을 파악하는 능력입니다."
+    "Main Idea": "대화나 강의의 전체적인 주제나 목적을 묻습니다. 교수가 주로 무엇에 대해 설명하고 있는지 파악하는 능력을 평가합니다.",
+    "Inference": "화자가 직접적으로 언급하지는 않았지만, 주어진 정보를 통해 논리적으로 유출할 수 있는 결론을 묻습니다. 말의 행간을 읽는 능력이 필요합니다.",
+    "Function": "특정 문장이나 어구를 말한 의도(기능)를 묻습니다. 주로 해당 부분을 다시 들려주며 말한 이유를 질문합니다.",
+    "Detail": "강의나 대화 중에 언급된 구체적인 사실, 정의, 이유 등을 묻습니다. 핵심 키워드와 관련된 세부 설명을 정확히 파악하는 능력이 중요합니다.",
+    "Organization": "강의의 전체적인 구조나 전개 방식을 묻습니다. 교수가 정보를 어떤 순서로 배치했는지(비교/대조, 인과관계 등) 파악해야 합니다.",
+    "Speaker's Attitude": "화자의 목소리 톤, 억양 등을 통해 화자의 태도, 감정, 의견을 묻습니다. 긍정/부정/회의적 태도 등을 판단해야 합니다."
   },
   Speaking: {
-    "Information Selection": "핵심 정보를 정확히 추출하여 답변에 포함하는 능력을 평가합니다.",
-    "Language & Grammar": "어휘의 다양성과 문법적 정확도를 평가합니다.",
-    "Organization": "답변의 논리적 흐름과 체계적인 구조를 평가합니다.",
-    "Fluency": "발음, 억양 및 말하기의 자연스러운 속도를 평가합니다."
+    "Information Selection": "통합형 문제에서 중요한 포인트와 세부 정보를 얼마나 정확하게 추출했는지를 평가합니다. 핵심 근거를 빠짐없이 포함하는 것이 중요합니다.",
+    "Language & Grammar": "얼마나 다양한 어휘와 복잡한 문장 구조를 정확하게 구사하는지 봅니다. 의미 전달을 방해하는 반복적인 문법 오류는 주의해야 합니다.",
+    "Organization": "답변의 흐름이 얼마나 체계적인지 평가합니다. 서론-본론-결론의 구조와 연결어 사용 능력을 봅니다.",
+    "Fluency": "말의 속도가 일정하고 발음과 억양이 자연스러운지를 평가합니다. 너무 잦은 휴지기나 불필요한 반복을 줄여야 합니다."
   },
   Writing: {
-    "Topic Development": "주장을 뒷받침하는 구체적인 근거와 예시의 적절성을 평가합니다.",
-    "Organization": "글의 논리적 순서와 단락 간의 매끄러운 연결을 평가합니다.",
-    "Language": "학술적 상황에 맞는 적절하고 다양한 어휘 구사력을 평가합니다.",
-    "Grammar": "문장 구조의 다양성과 문법적 정확도를 평가합니다."
+    "Topic Development": "질문에 대해 얼마나 관련성 있고 풍부한 답변을 했는지 평가합니다. 구체적인 예시와 논리적 근거가 설득력 있게 제시되어야 합니다.",
+    "Organization": "글이 논리적인 순서로 배치되었는지 평가합니다. 단락 간의 연결이 매끄럽고 독자가 흐름을 쉽게 따라올 수 있어야 합니다.",
+    "Language": "어휘 선택 및 표현력을 평가합니다. 학술적인 상황에 맞는 격식 있는 표현과 구문을 정확하게 구사하는 능력이 중요합니다.",
+    "Grammar": "문법 오류 여부와 문장 구조의 다양성을 평가합니다. 관계대명사, 분사구문 등을 자유자재로 활용하는 능력을 봅니다."
   }
 };
 
@@ -136,7 +136,6 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
       
       let currentY = margin;
 
-      // 캡처 함수
       const captureAndAddToPdf = async (el: HTMLElement) => {
         const canvas = await html2canvas(el, {
           scale: 3,
@@ -148,26 +147,18 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
         const imgProps = pdf.getImageProperties(imgData);
         const displayHeight = (imgProps.height * contentWidth) / imgProps.width;
 
-        // 페이지 넘김 체크
         if (currentY + displayHeight > pdfHeight - margin) {
           pdf.addPage();
           currentY = margin;
         }
 
         pdf.addImage(imgData, 'PNG', margin, currentY, contentWidth, displayHeight);
-        currentY += displayHeight + 5; // 요소 간 간격
+        currentY += displayHeight + 5;
       };
 
-      // 1. 헤더 캡처
-      if (headerRef.current) {
-        await captureAndAddToPdf(headerRef.current);
-      }
-
-      // 2. 각 섹션 카드별로 순회하며 캡처 (잘림 방지)
+      if (headerRef.current) await captureAndAddToPdf(headerRef.current);
       for (const sectionEl of sectionRefs.current) {
-        if (sectionEl) {
-          await captureAndAddToPdf(sectionEl);
-        }
+        if (sectionEl) await captureAndAddToPdf(sectionEl);
       }
 
       pdf.save(`${result.studentName}_Detailed_TOEFL_Report.pdf`);
@@ -223,9 +214,9 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
     return (
       <div 
         ref={el => sectionRefs.current[index] = el}
-        className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 shadow-sm overflow-hidden flex flex-col h-full transition-all hover:shadow-md"
+        className="bg-white rounded-[2rem] md:rounded-[2.5rem] border border-slate-200 shadow-sm flex flex-col h-full transition-all hover:shadow-md relative"
       >
-        <div className={`p-5 md:p-6 bg-gradient-to-r ${color} text-white flex justify-between items-center`}>
+        <div className={`p-5 md:p-6 bg-gradient-to-r ${color} text-white flex justify-between items-center rounded-t-[2rem] md:rounded-t-[2.5rem]`}>
           <div className="flex items-center gap-2 md:gap-3">
             <div className="w-8 h-8 md:w-10 md:h-10 bg-white/20 rounded-lg md:rounded-xl flex items-center justify-center">
               <i className={`fas ${icon} text-sm md:text-lg`}></i>
@@ -251,27 +242,30 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
               return (
                 <div key={i} className="group relative">
                   <div className="flex justify-between items-center mb-2 px-1">
-                    <div className="flex items-center gap-2 cursor-help">
+                    <div className="flex items-center gap-2 cursor-help relative">
                       <span className="text-xs md:text-sm font-bold text-slate-700 underline decoration-slate-200 decoration-dotted underline-offset-4 group-hover:text-indigo-600 group-hover:decoration-indigo-300 transition-all">
                         {cat.category}
                       </span>
                       {description && (
                         <div className="w-4 h-4 rounded-full bg-slate-100 flex items-center justify-center group-hover:bg-indigo-50 transition-colors">
-                           <i className="fas fa-question text-[8px] text-slate-400 group-hover:text-indigo-500"></i>
+                           <i className="fas fa-info text-[8px] text-slate-400 group-hover:text-indigo-500"></i>
+                        </div>
+                      )}
+
+                      {/* 정보 가이드 툴팁 복구 및 강화 */}
+                      {description && (
+                        <div className="absolute z-50 bottom-full left-0 mb-3 w-64 p-4 bg-slate-800 text-white text-[11px] rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 leading-relaxed font-medium pointer-events-none border border-white/10 no-print">
+                          <div className="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
+                            <i className="fas fa-lightbulb text-indigo-400"></i>
+                            {cat.category} 가이드
+                          </div>
+                          {description}
+                          <div className="absolute top-full left-4 -mt-1 w-3 h-3 bg-slate-800 rotate-45 border-b border-r border-white/10"></div>
                         </div>
                       )}
                     </div>
                     <span className="text-[10px] md:text-xs font-black text-indigo-600 bg-indigo-50 px-1.5 md:px-2 py-0.5 rounded-md">{Math.round(cat.percentage)}%</span>
                   </div>
-                  
-                  {/* 정보 툴팁 (Info Tooltip) 복구 */}
-                  {description && (
-                    <div className="absolute z-20 bottom-full left-0 mb-3 w-64 p-4 bg-slate-800 text-white text-xs rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 leading-relaxed font-medium pointer-events-none border border-white/10">
-                      <div className="font-bold text-indigo-300 mb-1">{cat.category} 가이드</div>
-                      {description}
-                      <div className="absolute top-full left-4 -mt-1 w-3 h-3 bg-slate-800 rotate-45 border-b border-r border-white/10"></div>
-                    </div>
-                  )}
 
                   <div className="h-2.5 md:h-3.5 bg-slate-100 rounded-full overflow-hidden">
                     <div 
@@ -304,13 +298,12 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
       </div>
 
       <div ref={reportRef} className="space-y-6">
-        {/* 요약 헤더 카드 */}
         <div ref={headerRef} className="bg-slate-900 rounded-[2rem] md:rounded-[3rem] p-6 md:p-10 text-white shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-64 md:w-96 h-64 md:h-96 bg-indigo-500/10 blur-[60px] md:blur-[100px] -mr-10 md:-mr-20 -mt-10 md:-mt-20"></div>
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6 md:gap-8 mb-8 md:mb-10">
             <div>
               <h2 className="text-2xl md:text-4xl font-black mb-2 md:mb-3">{result.studentName} 학생 성적 리포트</h2>
-              <p className="text-slate-400 font-bold max-w-md text-xs md:text-sm leading-relaxed">본 리포트는 IBT TOEFL 기준에 따라 학생의 4대 영역 성취도를 정밀하게 분석한 결과입니다.</p>
+              <p className="text-slate-400 font-bold max-w-md text-xs md:text-sm leading-relaxed">본 리포트는 IBT TOEFL 기준에 따라 학생의 4대 영역 성취도를 정밀 분석한 결과입니다.</p>
             </div>
             <div className="bg-white text-slate-900 rounded-[1.5rem] md:rounded-[2.5rem] p-5 md:p-8 text-center w-full md:min-w-[220px] shadow-2xl border-2 md:border-4 border-indigo-500/20">
               <span className="text-[10px] md:text-xs font-black text-slate-400 uppercase tracking-widest">Total Scaled Score</span>
@@ -338,7 +331,6 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
           </div>
         </div>
         
-        {/* 영역별 분석 카드들 */}
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4 md:gap-6">
           {renderSectionDetail('Reading', 'from-blue-600 to-indigo-700', 'fa-book-open', 0)}
           {renderSectionDetail('Listening', 'from-emerald-500 to-teal-600', 'fa-headphones', 1)}
