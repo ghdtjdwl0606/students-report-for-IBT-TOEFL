@@ -149,33 +149,49 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
   };
 
   const handleCopyLink = () => {
-    // 1단계: 문항 데이터 포지셔널 어레이로 변환 및 기본값 생략
-    // [n, s, c, a, p, t]
-    const qs = questions.map(q => {
-      const row: any[] = [q.number, q.section[0], q.category, q.correctAnswer || ''];
-      if (q.points !== 1 || q.type !== 'mcq') {
-        row.push(q.points);
-        row.push(q.type === 'mcq' ? 0 : 1);
-      }
-      return row;
-    });
+    // MCQ 섹션 데이터 압축: [Section, KeysString, AnswersString]
+    const packMCQ = (section: Section) => {
+      const qs = questions.filter(q => q.section === section).sort((a, b) => a.number - b.number);
+      const keys = qs.map(q => q.correctAnswer || ' ').join('');
+      const ans = qs.map(q => studentInput.answers[q.id] || ' ').join('');
+      // 카테고리/배점 변경이 없는 경우만 고려한 초경량화
+      const categories = qs.map(q => q.category === '일반' ? '' : q.category);
+      const points = qs.map(q => q.points === 1 ? '' : q.points.toString());
+      return [keys, ans, categories, points];
+    };
 
-    // 2단계: 최상위 압축 데이터 구조
-    const compact = [
+    // Direct 섹션 데이터 압축: [[category, max, earned], ...]
+    const packDirect = (section: Section) => {
+      return questions.filter(q => q.section === section).map(q => [
+        q.category,
+        q.points,
+        studentInput.answers[q.id] || '0'
+      ]);
+    };
+
+    const rData = packMCQ('Reading');
+    const lData = packMCQ('Listening');
+    const sData = packDirect('Speaking');
+    const wData = packDirect('Writing');
+
+    // 최종 컴팩트 구조: [Name, Reading, Listening, Speaking, Writing]
+    const ultraCompact = [
       studentInput.name,
-      studentInput.answers,
-      qs
+      rData,
+      lData,
+      sData,
+      wData
     ];
     
     try {
-      const jsonStr = JSON.stringify(compact);
+      const jsonStr = JSON.stringify(ultraCompact);
       const compressed = zlibSync(strToU8(jsonStr));
       const b64 = btoa(String.fromCharCode(...compressed))
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
         .replace(/=+$/, '');
       
-      const shareUrl = `${window.location.origin}${window.location.pathname}#r=${b64}`;
+      const shareUrl = `${window.location.origin}${window.location.pathname}#s=${b64}`;
       navigator.clipboard.writeText(shareUrl);
       alert("압축된 공유 링크가 복사되었습니다.");
     } catch (e) {
