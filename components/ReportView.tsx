@@ -143,35 +143,33 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
       pdf.save(`${result.studentName}_Detailed_Report.pdf`);
     } catch (error) {
       console.error("PDF generation failed", error);
-      alert("PDF 생성 중 오류가 발생했습니다.");
     } finally {
       setIsGeneratingPdf(false);
     }
   };
 
-  // 압축 및 키 최적화 공유 링크 생성
   const handleCopyLink = () => {
-    // 키 이름을 최소화하여 JSON 크기 절감
-    const minified = {
-      q: questions.map(q => ({
-        i: q.id,
-        n: q.number,
-        s: q.section[0], // R, L, S, W
-        c: q.category,
-        a: q.correctAnswer || '',
-        p: q.points,
-        t: q.type === 'mcq' ? 0 : 1
-      })),
-      s: {
-        n: studentInput.name,
-        a: studentInput.answers
+    // 1단계: 문항 데이터 포지셔널 어레이로 변환 및 기본값 생략
+    // [n, s, c, a, p, t]
+    const qs = questions.map(q => {
+      const row: any[] = [q.number, q.section[0], q.category, q.correctAnswer || ''];
+      if (q.points !== 1 || q.type !== 'mcq') {
+        row.push(q.points);
+        row.push(q.type === 'mcq' ? 0 : 1);
       }
-    };
+      return row;
+    });
+
+    // 2단계: 최상위 압축 데이터 구조
+    const compact = [
+      studentInput.name,
+      studentInput.answers,
+      qs
+    ];
     
     try {
-      const jsonStr = JSON.stringify(minified);
+      const jsonStr = JSON.stringify(compact);
       const compressed = zlibSync(strToU8(jsonStr));
-      // Uint8Array를 base64로 변환 (URL Safe 하도록 + -> -, / -> _)
       const b64 = btoa(String.fromCharCode(...compressed))
         .replace(/\+/g, '-')
         .replace(/\//g, '_')
@@ -181,8 +179,8 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
       navigator.clipboard.writeText(shareUrl);
       alert("압축된 공유 링크가 복사되었습니다.");
     } catch (e) {
-      console.error("Link generation failed", e);
-      alert("링크 생성에 실패했습니다.");
+      console.error(e);
+      alert("링크 생성 실패");
     }
   };
 

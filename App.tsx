@@ -47,14 +47,12 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkHash = () => {
       const hash = window.location.hash;
-      // 압축된 새 형식 'r=' 혹은 기존 'report=' 대응
       if (hash && (hash.startsWith('#r=') || hash.startsWith('#report='))) {
         try {
           const isNewFormat = hash.startsWith('#r=');
           const encodedData = isNewFormat ? hash.replace('#r=', '') : hash.replace('#report=', '');
           
           if (isNewFormat) {
-            // URL Safe Base64 복원
             const normalizedB64 = encodedData.replace(/-/g, '+').replace(/_/g, '/');
             const binary = atob(normalizedB64);
             const bytes = new Uint8Array(binary.length);
@@ -62,27 +60,32 @@ const App: React.FC = () => {
             
             const decompressed = unzlibSync(bytes);
             const jsonStr = strFromU8(decompressed);
-            const minified = JSON.parse(jsonStr);
+            const compact = JSON.parse(jsonStr);
             
-            // 데이터 복원 (Hydration)
-            const sectionMap: Record<string, Section> = { 'R': 'Reading', 'L': 'Listening', 'S': 'Speaking', 'W': 'Writing' };
-            const restoredQuestions: Question[] = minified.q.map((q: any) => ({
-              id: q.i,
-              number: q.n,
-              section: sectionMap[q.s],
-              category: q.c,
-              correctAnswer: q.a,
-              points: q.p,
-              type: q.t === 0 ? 'mcq' : 'direct'
-            }));
-            
-            setQuestions(restoredQuestions);
-            setStudentInput({
-              name: minified.s.n,
-              answers: minified.s.a
-            });
+            // 데이터 복원
+            if (Array.isArray(compact)) {
+              const [name, answers, qs] = compact;
+              const sectionMap: Record<string, Section> = { 'R': 'Reading', 'L': 'Listening', 'S': 'Speaking', 'W': 'Writing' };
+              
+              const restoredQuestions: Question[] = qs.map((q: any[]) => {
+                const [num, secCode, cat, ans, pts, typeCode] = q;
+                const section = sectionMap[secCode];
+                return {
+                  id: `${secCode}-${num}-${Date.now()}`, // 고유성 보장용 접미사 추가
+                  number: num,
+                  section,
+                  category: cat,
+                  correctAnswer: ans,
+                  points: pts !== undefined ? pts : 1.0,
+                  type: typeCode === 1 ? 'direct' : 'mcq'
+                };
+              });
+
+              setQuestions(restoredQuestions);
+              setStudentInput({ name, answers });
+            }
           } else {
-            // 구식 형식 (하위 호환)
+            // 하위 호환
             const decodedStr = decodeURIComponent(escape(window.atob(decodeURIComponent(encodedData))));
             const decodedData = JSON.parse(decodedStr);
             setQuestions(decodedData.questions);
@@ -92,7 +95,7 @@ const App: React.FC = () => {
           setCurrentStep(Step.REPORT);
           setIsSharedMode(true);
         } catch (e) {
-          console.error("Failed to decode share link", e);
+          console.error("Decode fail", e);
         }
       }
     };
