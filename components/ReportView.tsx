@@ -1,3 +1,4 @@
+
 import React, { useEffect, useState, useRef } from 'react';
 import { EvaluationResult, Question, StudentInput, Section, CategoryResult } from '../types.ts';
 import html2canvas from 'html2canvas';
@@ -149,14 +150,13 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
   };
 
   const handleCopyLink = () => {
-    // MCQ 데이터 압축: 정답과 학생 답안을 각각 배열로 처리하여 인덱스 밀림 방지
     const packMCQ = (section: Section) => {
       const qs = questions.filter(q => q.section === section).sort((a, b) => a.number - b.number);
       return [
-        qs.map(q => q.correctAnswer || ''), // keys
-        qs.map(q => studentInput.answers[q.id] || ''), // answers
-        qs.map(q => q.category === '일반' ? '' : q.category), // cats
-        qs.map(q => q.points === 1 ? '' : q.points.toString()) // pts
+        qs.map(q => q.correctAnswer || ''),
+        qs.map(q => studentInput.answers[q.id] || ''),
+        qs.map(q => q.category === '일반' ? '' : q.category),
+        qs.map(q => q.points === 1 ? '' : q.points.toString())
       ];
     };
 
@@ -272,6 +272,7 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
         >
           {isGeneratingPdf ? <><i className="fas fa-circle-notch animate-spin"></i> 생성 중...</> : <><i className="fas fa-file-pdf"></i> PDF 리포트 다운로드</>}
         </button>
+        {/* 공유 모드일 때도 리포트를 받은 사람이 링크를 다시 복사할 수 있도록 버튼은 유지합니다 */}
         <button onClick={handleCopyLink} className="bg-white border border-slate-200 px-5 py-3 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-all">공유 링크 복사</button>
       </div>
 
@@ -315,6 +316,8 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
           {renderSectionDetail('Writing', 'from-purple-600 to-pink-600', 'fa-pen-nib')}
         </div>
       </div>
+      
+      {/* 공유 모드일 때는 '새로운 데이터 입력하기' 버튼을 표시하지 않습니다. */}
       {!isShared && (
         <div className="flex justify-center pt-10 no-print">
           <button onClick={onReset} className="bg-slate-900 text-white px-16 py-5 rounded-3xl font-black shadow-2xl active:scale-95 transition-all">새로운 데이터 입력하기</button>

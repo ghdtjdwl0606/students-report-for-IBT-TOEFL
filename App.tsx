@@ -1,3 +1,4 @@
+
 import React, { useState, useEffect } from 'react';
 import { Question, StudentInput, Section } from './types.ts';
 import QuestionSetup from './components/QuestionSetup.tsx';
@@ -108,7 +109,6 @@ const App: React.FC = () => {
           return;
         }
 
-        // 기존 구형 포맷 하위 호환
         const isOldReport = hash.startsWith('#report=');
         if (isOldReport) {
           const encodedData = hash.replace('#report=', '');
@@ -130,13 +130,8 @@ const App: React.FC = () => {
   }, []);
 
   const handleReset = () => {
-    if (isSharedMode) {
-      window.location.hash = '';
-      setIsSharedMode(false);
-      setCurrentStep(Step.SETUP);
-      setQuestions(generateInitialQuestions());
-      setStudentInput({ name: '', answers: {} });
-    } else {
+    // 공유 모드에서는 리셋 기능을 수행하지 않음 (ReportView에서 버튼이 숨겨짐)
+    if (!isSharedMode) {
       setStudentInput({ name: '', answers: {} });
       setCurrentStep(Step.INPUT);
     }
@@ -155,24 +150,28 @@ const App: React.FC = () => {
               <p className="text-[10px] text-slate-400 font-semibold tracking-widest uppercase">4-Section Analysis Tool</p>
             </div>
           </div>
-          <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
-            {[
-              { id: Step.SETUP, label: '정보 설정', icon: 'fa-cog' },
-              { id: Step.INPUT, label: '데이터 입력', icon: 'fa-edit' },
-              { id: Step.REPORT, label: '결과 리포트', icon: 'fa-chart-pie' }
-            ].map((s) => (
-              <button
-                key={s.id}
-                disabled={currentStep < s.id && !isSharedMode}
-                onClick={() => !isSharedMode && setCurrentStep(s.id)}
-                className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
-                  currentStep === s.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
-                }`}
-              >
-                <i className={`fas ${s.icon}`}></i> {s.label}
-              </button>
-            ))}
-          </nav>
+          
+          {/* 공유 모드일 때는 상단 네비게이션 메뉴를 완전히 숨깁니다 */}
+          {!isSharedMode && (
+            <nav className="hidden md:flex items-center gap-1 bg-slate-100 p-1 rounded-xl">
+              {[
+                { id: Step.SETUP, label: '정보 설정', icon: 'fa-cog' },
+                { id: Step.INPUT, label: '데이터 입력', icon: 'fa-edit' },
+                { id: Step.REPORT, label: '결과 리포트', icon: 'fa-chart-pie' }
+              ].map((s) => (
+                <button
+                  key={s.id}
+                  disabled={currentStep < s.id}
+                  onClick={() => setCurrentStep(s.id)}
+                  className={`px-4 py-2 rounded-lg text-sm font-semibold transition-all flex items-center gap-2 ${
+                    currentStep === s.id ? 'bg-white text-indigo-600 shadow-sm' : 'text-slate-500 hover:text-slate-700'
+                  }`}
+                >
+                  <i className={`fas ${s.icon}`}></i> {s.label}
+                </button>
+              ))}
+            </nav>
+          )}
         </div>
       </header>
 
