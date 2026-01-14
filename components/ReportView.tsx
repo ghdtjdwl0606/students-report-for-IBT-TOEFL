@@ -2,6 +2,7 @@ import React, { useEffect, useState, useRef } from 'react';
 import { EvaluationResult, Question, StudentInput, Section, CategoryResult } from '../types.ts';
 import html2canvas from 'html2canvas';
 import { jsPDF } from 'jspdf';
+import { zlibSync, strToU8 } from 'fflate';
 
 interface Props {
   questions: Question[];
@@ -42,8 +43,6 @@ const CATEGORY_DESCRIPTIONS: Record<string, Record<string, string>> = {
     "Grammar": "문법 오류가 없는지뿐만 아니라, 문장 구조가 얼마나 다양한지 평가합니다. 단순문만 나열하지 않고 복합문, 관계대명사, 분사구문 등을 자유자재로 활용하면서도 시제나 수 일치 같은 기본적인 실수를 최소화해야 합니다."
   }
 };
-
-const utf8_to_b64 = (str: string) => window.btoa(unescape(encodeURIComponent(str)));
 
 const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShared }) => {
   const [result, setResult] = useState<EvaluationResult | null>(null);
@@ -110,12 +109,7 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
 
     const finalResult: EvaluationResult = {
       studentName: studentInput.name,
-      sectionScores: {
-        Reading: sR,
-        Listening: sL,
-        Speaking: sS,
-        Writing: sW
-      },
+      sectionScores: { Reading: sR, Listening: sL, Speaking: sS, Writing: sW },
       totalScore: Math.floor(sR + sL + sS + sW),
       maxScore: 120,
       categoryResults: Object.values(categoryMap),
@@ -124,14 +118,12 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
       scoreL: sL,
       actualEarnedPoints: Object.values(sectionTotals).reduce((acc, s) => acc + s.earned, 0)
     };
-
     setResult(finalResult);
   };
 
   const handleDownloadPdf = async () => {
     if (!reportRef.current || !result) return;
     setIsGeneratingPdf(true);
-    
     try {
       const element = reportRef.current;
       const canvas = await html2canvas(element, {
@@ -142,13 +134,11 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
         windowWidth: element.scrollWidth,
         windowHeight: element.scrollHeight
       });
-      
       const imgData = canvas.toDataURL('image/png');
       const pdf = new jsPDF('p', 'mm', 'a4');
       const imgProps = pdf.getImageProperties(imgData);
       const pdfWidth = pdf.internal.pageSize.getWidth();
       const pdfHeight = (imgProps.height * pdfWidth) / imgProps.width;
-      
       pdf.addImage(imgData, 'PNG', 0, 0, pdfWidth, pdfHeight);
       pdf.save(`${result.studentName}_Detailed_Report.pdf`);
     } catch (error) {
@@ -156,6 +146,43 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
       alert("PDF 생성 중 오류가 발생했습니다.");
     } finally {
       setIsGeneratingPdf(false);
+    }
+  };
+
+  // 압축 및 키 최적화 공유 링크 생성
+  const handleCopyLink = () => {
+    // 키 이름을 최소화하여 JSON 크기 절감
+    const minified = {
+      q: questions.map(q => ({
+        i: q.id,
+        n: q.number,
+        s: q.section[0], // R, L, S, W
+        c: q.category,
+        a: q.correctAnswer || '',
+        p: q.points,
+        t: q.type === 'mcq' ? 0 : 1
+      })),
+      s: {
+        n: studentInput.name,
+        a: studentInput.answers
+      }
+    };
+    
+    try {
+      const jsonStr = JSON.stringify(minified);
+      const compressed = zlibSync(strToU8(jsonStr));
+      // Uint8Array를 base64로 변환 (URL Safe 하도록 + -> -, / -> _)
+      const b64 = btoa(String.fromCharCode(...compressed))
+        .replace(/\+/g, '-')
+        .replace(/\//g, '_')
+        .replace(/=+$/, '');
+      
+      const shareUrl = `${window.location.origin}${window.location.pathname}#r=${b64}`;
+      navigator.clipboard.writeText(shareUrl);
+      alert("압축된 공유 링크가 복사되었습니다.");
+    } catch (e) {
+      console.error("Link generation failed", e);
+      alert("링크 생성에 실패했습니다.");
     }
   };
 
@@ -202,15 +229,12 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
                     </div>
                     <span className="text-xs font-black text-indigo-600 bg-indigo-50 px-2 py-0.5 rounded-md">{Math.round(cat.percentage)}%</span>
                   </div>
-                  
-                  {/* Tooltip */}
                   {description && (
                     <div className="absolute z-10 bottom-full left-0 mb-2 w-64 p-3 bg-slate-800 text-white text-xs rounded-xl shadow-xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 leading-relaxed font-medium pointer-events-none border border-white/10">
                       {description}
                       <div className="absolute top-full left-4 -mt-1 w-2 h-2 bg-slate-800 rotate-45"></div>
                     </div>
                   )}
-
                   <div className="h-3 bg-slate-100 rounded-full overflow-hidden">
                     <div 
                       className={`h-full rounded-full bg-gradient-to-r ${color} transition-all duration-1000 ease-out`} 
@@ -239,34 +263,18 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
           disabled={isGeneratingPdf}
           className="bg-indigo-600 text-white px-5 py-3 rounded-xl font-bold shadow-lg shadow-indigo-100 flex items-center gap-2 hover:bg-indigo-700 transition-all active:scale-95 disabled:opacity-50"
         >
-          {isGeneratingPdf ? (
-            <>
-              <i className="fas fa-circle-notch animate-spin"></i> 생성 중...
-            </>
-          ) : (
-            <>
-              <i className="fas fa-file-pdf"></i> PDF 리포트 다운로드
-            </>
-          )}
+          {isGeneratingPdf ? <><i className="fas fa-circle-notch animate-spin"></i> 생성 중...</> : <><i className="fas fa-file-pdf"></i> PDF 리포트 다운로드</>}
         </button>
-        <button onClick={() => {
-          const data = { questions, studentInput };
-          const encoded = encodeURIComponent(utf8_to_b64(JSON.stringify(data)));
-          navigator.clipboard.writeText(`${window.location.origin}${window.location.pathname}#report=${encoded}`);
-          alert("링크가 복사되었습니다.");
-        }} className="bg-white border border-slate-200 px-5 py-3 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-all">공유 링크 복사</button>
+        <button onClick={handleCopyLink} className="bg-white border border-slate-200 px-5 py-3 rounded-xl font-bold shadow-sm hover:bg-slate-50 transition-all">공유 링크 복사</button>
       </div>
 
       <div ref={reportRef} className="space-y-6 p-1">
         <div className="bg-slate-900 rounded-[3rem] p-10 text-white shadow-2xl relative overflow-hidden">
           <div className="absolute top-0 right-0 w-96 h-96 bg-indigo-500/10 blur-[100px] -mr-20 -mt-20"></div>
-          
           <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-8 mb-10">
             <div>
               <h2 className="text-4xl font-black mb-3">{result.studentName} 학생 성적 리포트</h2>
-              <p className="text-slate-400 font-bold max-w-md leading-relaxed">
-                본 리포트는 IBT TOEFL 기준에 따라 학생의 4대 영역 성취도를 정밀하게 분석한 결과입니다.
-              </p>
+              <p className="text-slate-400 font-bold max-w-md leading-relaxed">본 리포트는 IBT TOEFL 기준에 따라 학생의 4대 영역 성취도를 정밀하게 분석한 결과입니다.</p>
             </div>
             <div className="bg-white text-slate-900 rounded-[2.5rem] p-8 text-center min-w-[220px] shadow-2xl border-4 border-indigo-500/20">
               <span className="text-xs font-black text-slate-400 uppercase tracking-widest">Total Scaled Score</span>
@@ -274,7 +282,6 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
               <div className="text-slate-300 font-bold">out of 120</div>
             </div>
           </div>
-
           <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
             {[
               { label: 'Reading', score: result.sectionScores.Reading, color: 'text-blue-400', icon: 'fa-book-open' },
@@ -294,7 +301,6 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
             ))}
           </div>
         </div>
-
         <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
           {renderSectionDetail('Reading', 'from-blue-600 to-indigo-700', 'fa-book-open')}
           {renderSectionDetail('Listening', 'from-emerald-500 to-teal-600', 'fa-headphones')}
@@ -302,12 +308,9 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
           {renderSectionDetail('Writing', 'from-purple-600 to-pink-600', 'fa-pen-nib')}
         </div>
       </div>
-
       {!isShared && (
         <div className="flex justify-center pt-10 no-print">
-          <button onClick={onReset} className="bg-slate-900 text-white px-16 py-5 rounded-3xl font-black shadow-2xl active:scale-95 transition-all">
-            새로운 데이터 입력하기
-          </button>
+          <button onClick={onReset} className="bg-slate-900 text-white px-16 py-5 rounded-3xl font-black shadow-2xl active:scale-95 transition-all">새로운 데이터 입력하기</button>
         </div>
       )}
     </div>

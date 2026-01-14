@@ -1,17 +1,15 @@
-
 import React, { useState, useEffect } from 'react';
 import { Question, StudentInput, Section } from './types.ts';
 import QuestionSetup from './components/QuestionSetup.tsx';
 import StudentEntry from './components/StudentEntry.tsx';
 import ReportView from './components/ReportView.tsx';
+import { unzlibSync, strFromU8 } from 'fflate';
 
 enum Step {
   SETUP,
   INPUT,
   REPORT
 }
-
-const b64_to_utf8 = (str: string) => decodeURIComponent(escape(window.atob(str)));
 
 const generateInitialQuestions = (): Question[] => {
   const reading: Question[] = Array.from({ length: 30 }, (_, i) => ({
@@ -49,18 +47,50 @@ const App: React.FC = () => {
   useEffect(() => {
     const checkHash = () => {
       const hash = window.location.hash;
-      if (hash && hash.startsWith('#report=')) {
+      // 압축된 새 형식 'r=' 혹은 기존 'report=' 대응
+      if (hash && (hash.startsWith('#r=') || hash.startsWith('#report='))) {
         try {
-          const encodedData = hash.replace('#report=', '');
-          const decodedStr = b64_to_utf8(decodeURIComponent(encodedData));
-          const decodedData = JSON.parse(decodedStr);
+          const isNewFormat = hash.startsWith('#r=');
+          const encodedData = isNewFormat ? hash.replace('#r=', '') : hash.replace('#report=', '');
           
-          if (decodedData.questions && decodedData.studentInput) {
+          if (isNewFormat) {
+            // URL Safe Base64 복원
+            const normalizedB64 = encodedData.replace(/-/g, '+').replace(/_/g, '/');
+            const binary = atob(normalizedB64);
+            const bytes = new Uint8Array(binary.length);
+            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
+            
+            const decompressed = unzlibSync(bytes);
+            const jsonStr = strFromU8(decompressed);
+            const minified = JSON.parse(jsonStr);
+            
+            // 데이터 복원 (Hydration)
+            const sectionMap: Record<string, Section> = { 'R': 'Reading', 'L': 'Listening', 'S': 'Speaking', 'W': 'Writing' };
+            const restoredQuestions: Question[] = minified.q.map((q: any) => ({
+              id: q.i,
+              number: q.n,
+              section: sectionMap[q.s],
+              category: q.c,
+              correctAnswer: q.a,
+              points: q.p,
+              type: q.t === 0 ? 'mcq' : 'direct'
+            }));
+            
+            setQuestions(restoredQuestions);
+            setStudentInput({
+              name: minified.s.n,
+              answers: minified.s.a
+            });
+          } else {
+            // 구식 형식 (하위 호환)
+            const decodedStr = decodeURIComponent(escape(window.atob(decodeURIComponent(encodedData))));
+            const decodedData = JSON.parse(decodedStr);
             setQuestions(decodedData.questions);
             setStudentInput(decodedData.studentInput);
-            setCurrentStep(Step.REPORT);
-            setIsSharedMode(true);
           }
+          
+          setCurrentStep(Step.REPORT);
+          setIsSharedMode(true);
         } catch (e) {
           console.error("Failed to decode share link", e);
         }
