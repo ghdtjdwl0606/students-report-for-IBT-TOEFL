@@ -149,18 +149,17 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
   };
 
   const handleCopyLink = () => {
-    // MCQ 섹션 데이터 압축: [Section, KeysString, AnswersString]
+    // MCQ 데이터 압축: 정답과 학생 답안을 각각 배열로 처리하여 인덱스 밀림 방지
     const packMCQ = (section: Section) => {
       const qs = questions.filter(q => q.section === section).sort((a, b) => a.number - b.number);
-      const keys = qs.map(q => q.correctAnswer || ' ').join('');
-      const ans = qs.map(q => studentInput.answers[q.id] || ' ').join('');
-      // 카테고리/배점 변경이 없는 경우만 고려한 초경량화
-      const categories = qs.map(q => q.category === '일반' ? '' : q.category);
-      const points = qs.map(q => q.points === 1 ? '' : q.points.toString());
-      return [keys, ans, categories, points];
+      return [
+        qs.map(q => q.correctAnswer || ''), // keys
+        qs.map(q => studentInput.answers[q.id] || ''), // answers
+        qs.map(q => q.category === '일반' ? '' : q.category), // cats
+        qs.map(q => q.points === 1 ? '' : q.points.toString()) // pts
+      ];
     };
 
-    // Direct 섹션 데이터 압축: [[category, max, earned], ...]
     const packDirect = (section: Section) => {
       return questions.filter(q => q.section === section).map(q => [
         q.category,
@@ -169,18 +168,12 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
       ]);
     };
 
-    const rData = packMCQ('Reading');
-    const lData = packMCQ('Listening');
-    const sData = packDirect('Speaking');
-    const wData = packDirect('Writing');
-
-    // 최종 컴팩트 구조: [Name, Reading, Listening, Speaking, Writing]
     const ultraCompact = [
       studentInput.name,
-      rData,
-      lData,
-      sData,
-      wData
+      packMCQ('Reading'),
+      packMCQ('Listening'),
+      packDirect('Speaking'),
+      packDirect('Writing')
     ];
     
     try {

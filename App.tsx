@@ -50,10 +50,7 @@ const App: React.FC = () => {
       if (!hash) return;
 
       try {
-        let decodedData: any = null;
-
         if (hash.startsWith('#s=')) {
-          // 초경량 신규 포맷
           const b64 = hash.replace('#s=', '').replace(/-/g, '+').replace(/_/g, '/');
           const binary = atob(b64);
           const bytes = new Uint8Array(binary.length);
@@ -67,33 +64,35 @@ const App: React.FC = () => {
 
           const unpackMCQ = (section: Section, data: any[]) => {
             const [keys, ans, cats, pts] = data;
-            for (let i = 0; i < keys.length; i++) {
-              const id = `${section[0]}-${i + 1}`;
+            const prefix = section[0];
+            keys.forEach((key: any, i: number) => {
+              const id = `${prefix}-${i + 1}`;
               restoredQs.push({
                 id,
                 number: i + 1,
                 section,
-                category: cats[i] || '일반',
-                correctAnswer: keys[i].trim(),
-                points: pts[i] ? parseFloat(pts[i]) : 1.0,
+                category: String(cats[i] || '일반'),
+                correctAnswer: String(key || '').trim(),
+                points: (pts[i] && pts[i] !== '') ? parseFloat(pts[i]) : 1.0,
                 type: 'mcq'
               });
-              restoredAns[id] = ans[i].trim();
-            }
+              restoredAns[id] = String(ans[i] || '').trim();
+            });
           };
 
           const unpackDirect = (section: Section, data: any[]) => {
+            const prefix = section[0];
             data.forEach((item: any[], idx: number) => {
-              const id = `${section[0]}-D-${idx}`;
+              const id = `${prefix}-D-${idx}`;
               restoredQs.push({
                 id,
                 number: idx + 1,
                 section,
-                category: item[0],
-                points: item[1],
+                category: String(item[0]),
+                points: parseFloat(item[1]) || 5.0,
                 type: 'direct'
               });
-              restoredAns[id] = item[2].toString();
+              restoredAns[id] = String(item[2]);
             });
           };
 
@@ -103,30 +102,20 @@ const App: React.FC = () => {
           unpackDirect('Writing', wData);
 
           setQuestions(restoredQs);
-          setStudentInput({ name, answers: restoredAns });
+          setStudentInput({ name: String(name), answers: restoredAns });
           setCurrentStep(Step.REPORT);
           setIsSharedMode(true);
           return;
         }
 
-        // 구형 포맷 하위 호환
-        const isOldR = hash.startsWith('#r=');
+        // 기존 구형 포맷 하위 호환
         const isOldReport = hash.startsWith('#report=');
-        if (isOldR || isOldReport) {
-          const encodedData = isOldR ? hash.replace('#r=', '') : hash.replace('#report=', '');
-          if (isOldR) {
-            const b64 = encodedData.replace(/-/g, '+').replace(/_/g, '/');
-            const binary = atob(b64);
-            const bytes = new Uint8Array(binary.length);
-            for (let i = 0; i < binary.length; i++) bytes[i] = binary.charCodeAt(i);
-            const compact = JSON.parse(strFromU8(unzlibSync(bytes)));
-            // ... (기존 r= 복원 로직 생략, 필요시 유지)
-          } else {
-            const decodedStr = decodeURIComponent(escape(window.atob(decodeURIComponent(encodedData))));
-            const data = JSON.parse(decodedStr);
-            setQuestions(data.questions);
-            setStudentInput(data.studentInput);
-          }
+        if (isOldReport) {
+          const encodedData = hash.replace('#report=', '');
+          const decodedStr = decodeURIComponent(escape(window.atob(decodeURIComponent(encodedData))));
+          const data = JSON.parse(decodedStr);
+          setQuestions(data.questions);
+          setStudentInput(data.studentInput);
           setCurrentStep(Step.REPORT);
           setIsSharedMode(true);
         }
