@@ -98,10 +98,18 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
       cat.percentage = (cat.correctCount / cat.maxPoints) * 100 || 0;
     });
 
+    // 점수 산정 로직 수정: Reading/Listening 기본 점수 5점 부여
     const scaledScore = (section: Section) => {
       const { earned, max } = sectionTotals[section];
       if (max === 0) return 0;
-      return Math.floor((earned / max) * 30);
+      
+      if (section === 'Reading' || section === 'Listening') {
+        // 기본 5점 + (25점 만점으로 환산한 성취도)
+        return Math.floor(5 + (earned / max) * 25);
+      } else {
+        // Speaking/Writing은 기존 방식(30점 만점 환산) 유지
+        return Math.floor((earned / max) * 30);
+      }
     };
 
     const sR = scaledScore('Reading');
@@ -240,9 +248,9 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
             {categories.map((cat, i) => {
               const description = CATEGORY_DESCRIPTIONS[section]?.[cat.category];
               return (
-                <div key={i} className="group relative">
-                  <div className="flex justify-between items-center mb-2 px-1">
-                    <div className="flex items-center gap-2 cursor-help relative">
+                <div key={i} className="group">
+                  <div className="flex justify-between items-center mb-2 px-1 relative">
+                    <div className="flex items-center gap-2 cursor-help">
                       <span className="text-xs md:text-sm font-bold text-slate-700 underline decoration-slate-200 decoration-dotted underline-offset-4 group-hover:text-indigo-600 group-hover:decoration-indigo-300 transition-all">
                         {cat.category}
                       </span>
@@ -252,15 +260,16 @@ const ReportView: React.FC<Props> = ({ questions, studentInput, onReset, isShare
                         </div>
                       )}
 
-                      {/* 정보 가이드 툴팁 복구 및 강화 */}
+                      {/* 정보 가이드 툴팁 - z-index 최상단 배치 및 overflow 무시를 위해 absolute 위치 조정 */}
                       {description && (
-                        <div className="absolute z-50 bottom-full left-0 mb-3 w-64 p-4 bg-slate-800 text-white text-[11px] rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 leading-relaxed font-medium pointer-events-none border border-white/10 no-print">
-                          <div className="font-bold text-indigo-300 mb-1 flex items-center gap-1.5">
-                            <i className="fas fa-lightbulb text-indigo-400"></i>
+                        <div className="absolute z-[100] bottom-full left-0 mb-4 w-64 p-4 bg-slate-900 text-white text-[11px] rounded-2xl shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-200 leading-relaxed font-medium pointer-events-none border border-white/10 no-print">
+                          <div className="font-bold text-indigo-300 mb-1.5 flex items-center gap-1.5 border-b border-white/10 pb-1.5">
+                            <i className="fas fa-lightbulb text-yellow-400"></i>
                             {cat.category} 가이드
                           </div>
                           {description}
-                          <div className="absolute top-full left-4 -mt-1 w-3 h-3 bg-slate-800 rotate-45 border-b border-r border-white/10"></div>
+                          {/* 화살표 아이콘 */}
+                          <div className="absolute top-full left-4 -mt-1 w-3 h-3 bg-slate-900 rotate-45 border-b border-r border-white/10"></div>
                         </div>
                       )}
                     </div>
